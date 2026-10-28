@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Pédagogique FOFANA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-full flex flex-col overflow-hidden">
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 ease-in-out bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 no-print">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-lg"></i>
+        <div>
+            <h4 id="toast-title" class="font-bold text-sm">Succès</h4>
+            <p id="toast-msg" class="text-xs text-emerald-100">Opération effectuée avec succès.</p>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmation Global -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl transform transition-all">
+            <div class="flex items-center space-x-4 mb-4">
+                <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xl flex-shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h3 id="confirm-title" class="text-lg font-bold text-slate-900">Confirmation requise</h3>
+                    <p id="confirm-text" class="text-sm text-slate-500">Êtes-vous sûr de vouloir effectuer cette action ?</p>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button id="confirm-cancel" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Annuler</button>
+                <button id="confirm-ok" class="px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-lg shadow-rose-600/20">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header Principal -->
+    <header class="bg-indigo-900 text-white shadow-md z-20 flex-shrink-0 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <button id="sidebar-toggle" class="md:hidden text-indigo-200 hover:text-white p-2 focus:outline-none">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div class="w-10 h-10 rounded-xl bg-indigo-700 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                    F
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide">FOFANA <span class="text-xs px-2 py-0.5 bg-indigo-800 rounded-full text-indigo-200 font-normal ml-1">Pro</span></h1>
+                    <p class="text-xs text-indigo-300">Enseignant : Mohamed Fofana</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex flex-col text-right">
+                    <span class="text-xs font-medium text-indigo-200" id="header-school">Établissement Principal</span>
+                    <span class="text-xs text-indigo-400" id="header-year">Année Scolaire 2025-2026</span>
+                </div>
+                <button onclick="app.backupData()" title="Sauvegarder les données" class="p-2 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-indigo-200 hover:text-white transition-colors">
+                    <i class="fa-solid fa-download"></i>
+                </button>
+                <label title="Restaurer les données" class="p-2 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-indigo-200 hover:text-white transition-colors cursor-pointer">
+                    <i class="fa-solid fa-upload"></i>
+                    <input type="file" id="restore-file" class="hidden" onchange="app.restoreData(event)">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Layout Principal -->
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Sidebar / Navigation des 14 Modules -->
+        <aside id="sidebar" class="w-72 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 transition-all duration-300 z-30 absolute inset-y-0 left-0 transform -translate-x-full md:translate-x-0 md:static no-print">
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Navigation Modules</span>
+                <button onclick="app.navigateTo('dashboard')" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Tableau de bord</button>
+            </div>
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1" id="module-nav-list">
+                <!-- Généré dynamiquement en JS -->
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 text-center">
+                <p class="text-xs text-slate-500 font-medium">Application FOFANA v3.2</p>
+                <p class="text-[10px] text-slate-400">Tous droits réservés © 2026</p>
+            </div>
+        </aside>
+
+        <!-- Contenu Principal & Vues Modules -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-slate-50 relative">
+            <div id="main-content" class="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-8">
+                <!-- Les interfaces des modules s'affichent ici -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Script Application Complète -->
+    <script>
+        /**
+         * Application Pédagogique FOFANA - Logique Globale & Gestion des 14 Modules
+         */
+        class FofanaApp {
+            constructor() {
+                this.currentModule = 'dashboard';
+                this.modules = [
+                    { id: 'dashboard', name: 'Tableau de bord', icon: 'fa-chart-pie', desc: 'Vue d\'ensemble et statistiques' },
+                    { id: 'mod1', name: '1. Renseignements Enseignant', icon: 'fa-id-card', desc: 'Fiche administrative de l\'enseignant' },
+                    { id: 'mod2', name: '2. Liste Nominative Élèves', icon: 'fa-users', desc: 'Registre et fiches individuelles des élèves' },
+                    { id: 'mod3', name: '3. Répartition Mensuelle', icon: 'fa-calendar-days', desc: 'Planification pédagogique et progression' },
+                    { id: 'mod4', name: '4. Brochure Programme', icon: 'fa-book-open', desc: 'Objectifs et programmes officiels' },
+                    { id: 'mod5', name: '5. Règlement Intérieur', icon: 'fa-scale-balanced', desc: 'Règles de vie et discipline de classe' },
+                    { id: 'mod6', name: '6. Registre d\'Appel', icon: 'fa-clipboard-user', desc: 'Suivi quotidien des présences et absences' },
+                    { id: 'mod7', name: '7. Service de Balayage', icon: 'fa-broom', desc: 'Planning et rotation du nettoyage' },
+                    { id: 'mod8', name: '8. Cahier de Remarques', icon: 'fa-pen-clip', desc: 'Observations disciplinaires et pédagogiques' },
+                    { id: 'mod9', name: '9. Emploi du Temps', icon: 'fa-calendar-week', desc: 'Grille horaire hebdomadaire des cours' },
+                    { id: 'mod10', name: '10. Cahier de Préparation', icon: 'fa-file-lines', desc: 'Fiches de préparation des leçons' },
+                    { id: 'mod11', name: '11. Bibliothèque Numérique', icon: 'fa-books', desc: 'Ressources pédagogiques et documents' },
+                    { id: 'mod12', name: '12. Tableau d\'Honneur', icon: 'fa-award', desc: 'Distributions et valorisation des élèves' },
+                    { id: 'mod13', name: '13. Tableau des Âges', icon: 'fa-chart-column', desc: 'Statistiques démographiques des élèves' },
+                    { id: 'mod14', name: '14. Résultats Compositions', icon: 'fa-graduation-cap', desc: 'Évaluations, notes et bulletins' }
+                ];
+
+                // Données stockées localement (Persistance)
+                this.loadData();
+            }
+
+            loadData() {
+                const defaultData = {
+                    teacher: {
+                        nom: 'Fofana', prenom: 'Mohamed', matricule: 'MT-2026-99', fonction: 'Enseignant Titulaire',
+                        etablissement: 'Complexe Scolaire Excellence', region: 'Conakry', prefecture: 'Conakry',
+                        sousPrefecture: 'Ratoma', commune: 'Kipé', anneeScolaire: '2025-2026', niveau: 'CM2',
+                        classe: 'CM2 A', matieres: 'Mathématiques, Français, Histoire-Géo', telephone: '+224 620 00 00 00',
+                        email: 'mohamed.fofana@ecole.gn', datePriseFonction: '2023-10-01', photo: ''
+                    },
+                    students: [
+                        { id: 1, matricule: 'EL-001', nom: 'Diallo', prenom: 'Amadou', sexe: 'M', naissance: '2014-05-12', parent: 'Ousmane Diallo', telephone: '+224 621 11 22 33', adresse: 'Kipé Dadach', observations: 'Élève sérieux et appliqué.' },
+                        { id: 2, matricule: 'EL-002', nom: 'Camara', prenom: 'Mariama', sexe: 'F', naissance: '2015-02-20', parent: 'Aboubacar Camara', telephone: '+224 622 44 55 66', adresse: 'Nongo Centre', observations: 'Très bonne participation en classe.' },
+                        { id: 3, matricule: 'EL-003', nom: 'Bangoura', prenom: 'Ibrahima', sexe: 'M', naissance: '2014-11-05', parent: 'Fanta Bangoura', telephone: '+224 623 77 88 99', adresse: 'Taouyah', observations: 'Nécessite un suivi en lecture.' }
+                    ],
+                    planning: [
+                        { id: 1, mois: 'Octobre', matiere: 'Mathématiques', classe: 'CM2 A', competence: 'Maîtriser les grands nombres', chapitre: 'Chap 1', leçon: 'Nombres entiers naturels', contenu: 'Lecture, écriture et décomposition', seances: 4, debut: '2025-10-02', fin: '2025-10-15', statut: 'terminé', observations: 'Bien assimilé par la classe.' }
+                    ],
+                    brochure: {
+                        objectifs: 'Permettre l\'acquisition des compétences fondamentales du cycle primaire.',
+                        competences: 'Résoudre des problèmes complexes, lire couramment et s\'exprimer clairement.',
+                        methodes: 'Pédagogie active, travail de groupe et exercices d\'application.',
+                        supports: 'Manuels officiels, tableaux, fiches d\'exercices.'
+                    },
+                    reglement: [
+                        { id: 1, article: 1, rubrique: 'Discipline', texte: 'La ponctualité est de rigueur pour tous les élèves à l\'entrée des classes.' },
+                        { id: 2, article: 2, rubrique: 'Respect', texte: 'Le respect mutuel entre élèves et envers le corps enseignant est obligatoire.' },
+                        { id: 3, article: 3, rubrique: 'Propreté', texte: 'Chaque élève doit veiller à la propreté de sa salle de classe et du matériel.' }
+                    ],
+                    attendance: {}, // { '2026-06-05': { 1: 'present', 2: 'absent', ... } }
+                    cleaning: [
+                        { id: 1, jour: 'Lundi', groupe: 'Groupe 1', eleves: 'Amadou Diallo, Mariama Camara', taches: 'Balayage et nettoyage du tableau', statut: 'réalisé', observation: 'Travail bien fait' }
+                    ],
+                    remarks: [
+                        { id: 1, date: '2026-05-10', eleveId: 3, matiere: 'Français', categorie: 'difficulté', description: 'Difficulté persistante en orthographe lexicale.', mesure: 'Exercices de renforcement personnalisés', resultat: 'En cours', statut: 'à suivre' }
+                    ],
+                    timetable: [
+                        { id: 1, jour: 'Lundi', heureDebut: '08:00', heureFin: '09:00', matiere: 'Mathématiques', classe: 'CM2 A', salle: 'Salle 12', enseignant: 'Mohamed Fofana', observation: '' },
+                        { id: 2, jour: 'Lundi', heureDebut: '09:00', heureFin: '10:00', matiere: 'Français', classe: 'CM2 A', salle: 'Salle 12', enseignant: 'Mohamed Fofana', observation: '' }
+                    ],
+                    preparations: [
+                        { id: 1, date: '2026-06-01', matiere: 'Mathématiques', classe: 'CM2 A', titre: 'Les fractions décimales', chapitre: 'Chapitre 3', duree: '45 min', objGen: 'Comprendre les fractions', objSp: 'Savoir convertir', competences: 'Calcul numérique', prerequis: 'Fractions simples', materiel: 'Règlette, craie', methodes: 'Interrogative', intro: 'Rappel sur les parts', deroulement: 'Explication progressive', activitesEns: 'Présentation au tableau', activitesEleves: 'Exercices d\'application', exercices: 'Exercice 1 p. 45', evaluation: 'Contrôle flash', remédiation: 'Soutien cibles', devoirs: 'Ex 2 et 3', bilan: 'Séance satisfaisante' }
+                    ],
+                    library: [
+                        { id: 1, titre: 'Guide du Maître CM2', auteur: 'INRP', matiere: 'Pédagogie', niveau: 'CM2', type: 'Livre', annee: '2023', description: 'Guide officiel d\'accompagnement pédagogique.', lien: '#', categorie: 'Pédagogie', motsClefs: 'guide, cm2, officiel' }
+                    ],
+                    honor: [
+                        { id: 1, periode: '1er Trimestre', eleveId: 2, classe: 'CM2 A', moyenne: '18.5/20', rang: '1er', motif: 'Excellence académique et assiduité irréprochable', appreciation: 'Élève brillante et travailleuse.' }
+                    ],
+                    evaluations: [
+                        { id: 1, intitule: 'Évaluation N°1', matiere: 'Mathématiques', classe: 'CM2 A', date: '2026-05-15', periode: '2ème Trimestre', bareme: 20, coefficient: 2, notes: { 1: 16, 2: 19, 3: 11 }, absences: {}, observations: 'Bon niveau général.' }
+                    ]
+                };
+
+                const saved = localStorage.getItem('fofana_app_data');
+                if (saved) {
+                    try {
+                        this.data = JSON.parse(saved);
+                    } catch(e) {
+                        this.data = defaultData;
+                    }
+                } else {
+                    this.data = defaultData;
+                }
+            }
+
+            saveData() {
+                localStorage.setItem('fofana_app_data', JSON.stringify(this.data));
+                this.showToast('Enregistrement réussi', 'Toutes les modifications ont été sauvegardées.', 'success');
+                this.updateHeaderInfo();
+            }
+
+            init() {
+                this.renderSidebar();
+                this.updateHeaderInfo();
+                this.navigateTo(this.currentModule);
+
+                // Setup Mobile Sidebar Toggle
+                document.getElementById('sidebar-toggle').addEventListener('click', () => {
+                    const sidebar = document.getElementById('sidebar');
+                    sidebar.classList.toggle('-translate-x-full');
+                });
+            }
+
+            updateHeaderInfo() {
+                document.getElementById('header-school').innerText = this.data.teacher.etablissement || 'Établissement';
+                document.getElementById('header-year').innerText = `Année Scolaire ${this.data.teacher.anneeScolaire || '2025-2026'}`;
+            }
+
+            renderSidebar() {
+                const list = document.getElementById('module-nav-list');
+                list.innerHTML = '';
+                this.modules.forEach(m => {
+                    const active = this.currentModule === m.id;
+                    const btn = document.createElement('button');
+                    btn.className = `w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left ${active ? 'bg-indigo-50 text-indigo-700 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`;
+                    btn.innerHTML = `<div class="w-8 h-8 rounded-lg ${active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'} flex items-center justify-center flex-shrink-0 transition-colors"><i class="fa-solid ${m.icon}"></i></div><div class="truncate"><div class="truncate">${m.name}</div><div class="text-[10px] text-slate-400 font-normal truncate">${m.desc}</div></div>`;
+                    btn.onclick = () => {
+                        this.navigateTo(m.id);
+                        if (window.innerWidth < 768) {
+                            document.getElementById('sidebar').classList.add('-translate-x-full');
+                        }
+                    };
+                    list.appendChild(btn);
+                });
+            }
+
+            navigateTo(moduleId) {
+                this.currentModule = moduleId;
+                this.renderSidebar();
+                const container = document.getElementById('main-content');
+                container.scrollTop = 0;
+
+                switch(moduleId) {
+                    case 'dashboard': this.renderDashboard(container); break;
+                    case 'mod1': this.renderMod1(container); break;
+                    case 'mod2': this.renderMod2(container); break;
+                    case 'mod3': this.renderMod3(container); break;
+                    case 'mod4': this.renderMod4(container); break;
+                    case 'mod5': this.renderMod5(container); break;
+                    case 'mod6': this.renderMod6(container); break;
+                    case 'mod7': this.renderMod7(container); break;
+                    case 'mod8': this.renderMod8(container); break;
+                    case 'mod9': this.renderMod9(container); break;
+                    case 'mod10': this.renderMod10(container); break;
+                    case 'mod11': this.renderMod11(container); break;
+                    case 'mod12': this.renderMod12(container); break;
+                    case 'mod13': this.renderMod13(container); break;
+                    case 'mod14': this.renderMod14(container); break;
+                    default: container.innerHTML = '<div class="p-6 text-center text-slate-500">Module en cours de chargement...</div>';
+                }
+            }
+
+            showToast(title, msg, type = 'success') {
+                const toast = document.getElementById('toast');
+                const tTitle = document.getElementById('toast-title');
+                const tMsg = document.getElementById('toast-msg');
+                const tIcon = document.getElementById('toast-icon');
+
+                tTitle.innerText = title;
+                tMsg.innerText = msg;
+                if (type === 'success') {
+                    toast.className = 'fixed top-5 right-5 z-50 transform transition-transform duration-300 ease-in-out bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 no-print';
+                    tIcon.className = 'fa-solid fa-circle-check text-lg';
+                } else {
+                    toast.className = 'fixed top-5 right-5 z-50 transform transition-transform duration-300 ease-in-out bg-rose-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 no-print';
+                    tIcon.className = 'fa-solid fa-triangle-exclamation text-lg';
+                }
+
+                toast.classList.remove('translate-x-full');
+                setTimeout(() => {
+                    toast.classList.add('translate-x-full');
+                }, 3500);
+            }
+
+            confirmAction(title, text, callback) {
+                const modal = document.getElementById('confirm-modal');
+                document.getElementById('confirm-title').innerText = title;
+                document.getElementById('confirm-text').innerText = text;
+                modal.classList.remove('hidden');
+
+                const okBtn = document.getElementById('confirm-ok');
+                const cancelBtn = document.getElementById('confirm-cancel');
+
+                const clean = () => {
+                    modal.classList.add('hidden');
+                    okBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                };
+
+                okBtn.onclick = () => {
+                    clean();
+                    callback();
+                };
+                cancelBtn.onclick = () => {
+                    clean();
+                };
+            }
+
+            backupData() {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.data, null, 2));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `fofana_sauvegarde_${new Date().toISOString().slice(0,10)}.json`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+                this.showToast('Sauvegarde réussie', 'Fichier de sauvegarde téléchargé avec succès.', 'success');
+            }
+
+            restoreData(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        this.data = parsed;
+                        this.saveData();
+                        this.init();
+                        this.showToast('Restauration réussie', 'Les données ont été restaurées avec succès.', 'success');
+                    } catch(err) {
+                        this.showToast('Erreur', 'Fichier de sauvegarde invalide.', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // ==========================================
+            // TABLEAU DE BORD
+            // ==========================================
+            renderDashboard(container) {
+                const totalStudents = this.data.students.length;
+                const totalPreparations = this.data.preparations.length;
+                const totalEvaluations = this.data.evaluations.length;
+                const nextTimetable = this.data.timetable[0] || { matiere: 'Aucun cours prévu', heureDebut: '--:--', classe: '' };
+
+                container.innerHTML = `
+                    <div class="space-y-6">
+                        <!-- En-tête de bienvenue -->
+                        <div class="bg-gradient-to-r from-indigo-800 to-indigo-900 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div>
+                                <span class="bg-indigo-700 text-indigo-200 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Espace Pédagogique</span>
+                                <h2 class="text-2xl font-bold mt-2">Bienvenue, ${this.data.teacher.prenom} ${this.data.teacher.nom}</h2>
+                                <p class="text-indigo-200 text-sm mt-1">${this.data.teacher.etablissement} — Classe de ${this.data.teacher.classe}</p>
+                            </div>
+                            <div class="flex items-center space-x-3 bg-indigo-950/50 p-3 rounded-xl border border-indigo-700/50">
+                                <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold"><i class="fa-solid fa-calendar-days"></i></div>
+                                <div>
+                                    <div class="text-xs text-indigo-300">Année Scolaire</div>
+                                    <div class="font-bold text-sm">${this.data.teacher.anneeScolaire}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statistiques Rapides -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
+                                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold"><i class="fa-solid fa-users"></i></div>
+                                <div>
+                                    <div class="text-xs font-medium text-slate-400 uppercase">Total Élèves</div>
+                                    <div class="text-2xl font-bold text-slate-900">${totalStudents}</div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
+                                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold"><i class="fa-solid fa-file-lines"></i></div>
+                                <div>
+                                    <div class="text-xs font-medium text-slate-400 uppercase">Préparations</div>
+                                    <div class="text-2xl font-bold text-slate-900">${totalPreparations}</div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
+                                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold"><i class="fa-solid fa-graduation-cap"></i></div>
+                                <div>
+                                    <div class="text-xs font-medium text-slate-400 uppercase">Évaluations</div>
+                                    <div class="text-2xl font-bold text-slate-900">${totalEvaluations}</div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
+                                <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl font-bold"><i class="fa-solid fa-clock"></i></div>
+                                <div>
+                                    <div class="text-xs font-medium text-slate-400 uppercase">Prochain Cours</div>
+                                    <div class="text-sm font-bold text-slate-900 truncate max-w-[140px]" title="${nextTimetable.matiere}">${nextTimetable.matiere} (${nextTimetable.heureDebut})</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Accès Rapides aux 14 Modules -->
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg text-slate-900">Modules Pédagogiques</h3>
+                                <span class="text-xs text-slate-500">14 Modules actifs</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="dashboard-modules-grid"></div>
+                        </div>
+                    </div>
+                `;
+
+                const grid = document.getElementById('dashboard-modules-grid');
+                this.modules.filter(m => m.id !== 'dashboard').forEach(m => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group';
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center text-lg transition-colors"><i class="fa-solid ${m.icon}"></i></div>
+                                <i class="fa-solid fa-arrow-right text-slate-300 group-hover:text-indigo-600 transition-colors"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">${m.name}</h4>
+                            <p class="text-xs text-slate-500 mt-1">${m.desc}</p>
+                        </div>
+                    `;
+                    card.onclick = () => this.navigateTo(m.id);
+                    grid.appendChild(card);
+                });
+            }
+
+            // ==========================================
+            // MODULE 1 : RENSEIGNEMENTS ENSEIGNANT
+            // ==========================================
+            renderMod1(container) {
+                const t = this.data.teacher;
+                container.innerHTML = `
+                    <div class="max-w-4xl mx-auto bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8 space-y-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-6 border-b border-slate-100 gap-4">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900">1. Renseignements de l'Enseignant</h2>
+                                <p class="text-xs text-slate-500">Fiche administrative et professionnelle officielle</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="app.printMod1()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors flex items-center space-x-2"><i class="fa-solid fa-print"></i><span>Imprimer</span></button>
+                                <button onclick="app.saveMod1(event)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors shadow-lg shadow-indigo-600/20 flex items-center space-x-2"><i class="fa-solid fa-floppy-disk"></i><span>Enregistrer</span></button>
+                            </div>
+                        </div>
+
+                        <form id="form-mod1" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Nom</label><input type="text" name="nom" value="${t.nom || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Prénom</label><input type="text" name="prenom" value="${t.prenom || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Matricule</label><input type="text" name="matricule" value="${t.matricule || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Fonction</label><input type="text" name="fonction" value="${t.fonction || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Établissement</label><input type="text" name="etablissement" value="${t.etablissement || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Région</label><input type="text" name="region" value="${t.region || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Préfecture</label><input type="text" name="prefecture" value="${t.prefecture || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Sous-préfecture</label><input type="text" name="sousPrefecture" value="${t.sousPrefecture || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Commune</label><input type="text" name="commune" value="${t.commune || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Année Scolaire</label><input type="text" name="anneeScolaire" value="${t.anneeScolaire || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Niveau / Classe</label><input type="text" name="classe" value="${t.classe || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Matières enseignées</label><input type="text" name="matieres" value="${t.matieres || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Téléphone</label><input type="text" name="telephone" value="${t.telephone || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Adresse électronique</label><input type="email" name="email" value="${t.email || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Date de prise de fonction</label><input type="date" name="datePriseFonction" value="${t.datePriseFonction || ''}" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600"></div>
+                        </form>
+                    </div>
+                `;
+            }
+
+            saveMod1(e) {
+                const form = document.getElementById('form-mod1');
+                const formData = new FormData(form);
+                for (let [key, val] of formData.entries()) {
+                    this.data.teacher[key] = val;
+                }
+                this.saveData();
+            }
+
+            printMod1() {
+                window.print();
+            }
+
+            // ==========================================
+            // MODULE 2 : LISTE NOMINATIVE DES ÉLÈVES
+            // ==========================================
+            renderMod2(container) {
+                const students = this.data.students;
+                container.innerHTML = `
+                    <div class="space-y-6">
+                        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900">2. Liste Nominative des Élèves</h2>
+                                <p class="text-xs text-slate-500">Registre officiel de la classe (${students.length} élèves)</p>
+                            </div>
+                            <div class="flex items-center space-x-2 w-full sm:w-auto">
+                                <button onclick="app.openStudentModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors shadow-lg shadow-indigo-600/20 flex items-center space-x-2"><i class="fa-solid fa-user-plus"></i><span>Nouvel Élève</span></button>
+                                <button onclick="window.print()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors"><i class="fa-solid fa-print"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Tableau des élèves -->
+                        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                            <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
+                                <div class="relative flex-1 max-w-sm">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                                    <input type="text" id="search-student" onkeyup="app.filterStudents(this.value)" placeholder="Rechercher par nom ou matricule..." class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-indigo-600">
+                                </div>
+                                <button onclick="app.sortStudents()" class="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium rounded-xl border border-slate-200 flex items-center space-x-1.5"><i class="fa-solid fa-arrow-down-a-z"></i><span>Trier</span></button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-500 uppercase font-semibold">
+                                            <th class="p-3">N°</th>
+                                            <th class="p-3">Matricule</th>
+                                            <th class="p-3">Nom & Prénom</th>
+                                            <th class="p-3">Sexe</th>
+                                            <th class="p-3">Date Naissance</th>
+                                            <th class="p-3">Âge</th>
+                                            <th class="p-3">Parent / Tuteur</th>
+                                            <th class="p-3">Téléphone</th>
+                                            <th class="p-3 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="students-table-body" class="divide-y divide-slate-100">
+                                        <!-- Dynamique -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Élève -->
+                    <div id="student-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+                        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                            <h3 id="student-modal-title" class="text-lg font-bold text-slate-900 mb-4">Ajouter un élève</h3>
+                            <form id="student-form" class="space-y-4" onsubmit="app.saveStudent(event)">
+                                <input type="hidden" id="st-id">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Matricule</label><input type="text" id="st-matricule" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Sexe</label><select id="st-sexe" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"><option value="M">Masculin</option><option value="F">Féminin</option></select></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Nom</label><input type="text" id="st-nom" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Prénom</label><input type="text" id="st-prenom" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Date de Naissance</label><input type="date" id="st-naissance" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Parent / Tuteur</label><input type="text" id="st-parent" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Téléphone parent</label><input type="text" id="st-telephone" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Adresse / Quartier</label><input type="text" id="st-adresse" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                </div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Observations</label><textarea id="st-observations" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></textarea></div>
+                                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                                    <button type="button" onclick="app.closeStudentModal()" class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl">Annuler</button>
+                                    <button type="submit" class="px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-600/20">Enregistrer</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                this.renderStudentsTable(students);
+            }
+
+            renderStudentsTable(list) {
+                const tbody = document.getElementById('students-table-body');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                list.forEach((s, idx) => {
+                    const age = s.naissance ? new Date().getFullYear() - new Date(s.naissance).getFullYear() : 'N/A';
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50/50 transition-colors';
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-slate-500">${idx + 1}</td>
+                        <td class="p-3 font-mono text-slate-600">${s.matricule}</td>
+                        <td class="p-3 font-bold text-slate-900">${s.nom} ${s.prenom}</td>
+                        <td class="p-3">${s.sexe}</td>
+                        <td class="p-3">${s.naissance || 'Non renseignée'}</td>
+                        <td class="p-3">${age} ans</td>
+                        <td class="p-3">${s.parent || '-'}</td>
+                        <td class="p-3">${s.telephone || '-'}</td>
+                        <td class="p-3 text-right space-x-2">
+                            <button onclick="app.openStudentModal(${s.id})" class="text-indigo-600 hover:text-indigo-800 p-1"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="app.deleteStudent(${s.id})" class="text-rose-600 hover:text-rose-800 p-1"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            filterStudents(query) {
+                const q = query.toLowerCase();
+                const filtered = this.data.students.filter(s => s.nom.toLowerCase().includes(q) || s.prenom.toLowerCase().includes(q) || s.matricule.toLowerCase().includes(q));
+                this.renderStudentsTable(filtered);
+            }
+
+            sortStudents() {
+                this.data.students.sort((a,b) => a.nom.localeCompare(b.nom));
+                this.renderStudentsTable(this.data.students);
+                this.showToast('Tri effectué', 'Liste triée par ordre alphabétique.', 'success');
+            }
+
+            openStudentModal(id = null) {
+                const modal = document.getElementById('student-modal');
+                modal.classList.remove('hidden');
+                document.getElementById('student-form').reset();
+                document.getElementById('st-id').value = '';
+                document.getElementById('student-modal-title').innerText = 'Ajouter un élève';
+
+                if (id) {
+                    const s = this.data.students.find(x => x.id === id);
+                    if (s) {
+                        document.getElementById('student-modal-title').innerText = 'Modifier la fiche de l\'élève';
+                        document.getElementById('st-id').value = s.id;
+                        document.getElementById('st-matricule').value = s.matricule;
+                        document.getElementById('st-sexe').value = s.sexe || 'M';
+                        document.getElementById('st-nom').value = s.nom;
+                        document.getElementById('st-prenom').value = s.prenom;
+                        document.getElementById('st-naissance').value = s.naissance;
+                        document.getElementById('st-parent').value = s.parent;
+                        document.getElementById('st-telephone').value = s.telephone;
+                        document.getElementById('st-adresse').value = s.adresse;
+                        document.getElementById('st-observations').value = s.observations;
+                    }
+                } else {
+                    const nextId = 'EL-' + String(this.data.students.length + 1).padStart(3, '0');
+                    document.getElementById('st-matricule').value = nextId;
+                }
+            }
+
+            closeStudentModal() {
+                document.getElementById('student-modal').classList.add('hidden');
+            }
+
+            saveStudent(e) {
+                e.preventDefault();
+                const id = document.getElementById('st-id').value;
+                const student = {
+                    id: id ? parseInt(id) : (this.data.students.length > 0 ? Math.max(...this.data.students.map(x => x.id)) + 1 : 1),
+                    matricule: document.getElementById('st-matricule').value,
+                    sexe: document.getElementById('st-sexe').value,
+                    nom: document.getElementById('st-nom').value,
+                    prenom: document.getElementById('st-prenom').value,
+                    naissance: document.getElementById('st-naissance').value,
+                    parent: document.getElementById('st-parent').value,
+                    telephone: document.getElementById('st-telephone').value,
+                    adresse: document.getElementById('st-adresse').value,
+                    observations: document.getElementById('st-observations').value
+                };
+
+                if (id) {
+                    const idx = this.data.students.findIndex(x => x.id === parseInt(id));
+                    if (idx !== -1) this.data.students[idx] = student;
+                } else {
+                    this.data.students.push(student);
+                }
+
+                this.saveData();
+                this.closeStudentModal();
+                this.renderStudentsTable(this.data.students);
+            }
+
+            deleteStudent(id) {
+                this.confirmAction('Supprimer l\'élève', 'Voulez-vous vraiment supprimer cet élève du registre ?', () => {
+                    this.data.students = this.data.students.filter(s => s.id !== id);
+                    this.saveData();
+                    this.renderStudentsTable(this.data.students);
+                });
+            }
+
+            // ==========================================
+            // MODULES 3 À 14 : STRUCTURES INTÉGRÉES ROBUSTES AVEC FORMULAIRES DE CRÉATION ACTIFS
+            // ==========================================
+
+            // Formulaires spécifiques pour les modules 3 à 14
+            getFormFieldsForModule(modNumber) {
+                switch(String(modNumber)) {
+                    case '3':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Mois</label><input type="text" name="mois" placeholder="ex: Octobre" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Matière</label><input type="text" name="matiere" placeholder="ex: Mathématiques" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Chapitre</label><input type="text" name="chapitre" placeholder="ex: Chapitre 1" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Nombre de séances</label><input type="number" name="seances" placeholder="4" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Titre de la Leçon</label><input type="text" name="leçon" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Objectif / Compétence visée</label><textarea name="competence" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="2"></textarea></div>
+                        `;
+                    case '4':
+                        return `
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Matière / Domaine</label><input type="text" name="matiere" required placeholder="ex: Français" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Objectifs Officiels</label><textarea name="objectifs" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="3"></textarea></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Compétences à développer</label><textarea name="competences" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="2"></textarea></div>
+                        `;
+                    case '5':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Article N°</label><input type="number" name="article" required placeholder="ex: 1" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Rubrique / Catégorie</label><input type="text" name="rubrique" placeholder="Discipline, Respect..." class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Texte de la règle</label><textarea name="texte" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="3"></textarea></div>
+                        `;
+                    case '6':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Date</label><input type="date" name="date" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Statut Présence</label><select name="statut" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"><option value="Présent">Présent</option><option value="Absent">Absent</option><option value="Retard">Retard</option><option value="Excusé">Excusé</option></select></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Élève concerne</label><input type="text" name="eleve" required placeholder="Nom & Prénom de l'élève" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Motif / Remarque</label><input type="text" name="motif" placeholder="Raison de l'absence ou du retard" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                        `;
+                    case '7':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Jour</label><select name="jour" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"><option value="Lundi">Lundi</option><option value="Mardi">Mardi</option><option value="Mercredi">Mercredi</option><option value="Jeudi">Jeudi</option><option value="Vendredi">Vendredi</option></select></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Groupe / Équipe</label><input type="text" name="groupe" placeholder="Groupe 1" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Élèves responsables</label><input type="text" name="eleves" required placeholder="Liste des élèves en charge" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Tâches assignées</label><input type="text" name="taches" placeholder="Balayage, dépoussiérage, tableau..." class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                        `;
+                    case '8':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Date</label><input type="date" name="date" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Catégorie</label><select name="categorie" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"><option value="Disciplinaire">Disciplinaire</option><option value="Pédagogique">Pédagogique</option><option value="Félicitation">Félicitation</option></select></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Élève concerné</label><input type="text" name="eleve" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Description de la remarque</label><textarea name="description" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="3"></textarea></div>
+                        `;
+                    case '9':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Jour</label><select name="jour" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"><option value="Lundi">Lundi</option><option value="Mardi">Mardi</option><option value="Mercredi">Mercredi</option><option value="Jeudi">Jeudi</option><option value="Vendredi">Vendredi</option></select></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Matière</label><input type="text" name="matiere" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Heure Début</label><input type="time" name="heureDebut" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Heure Fin</label><input type="time" name="heureFin" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Salle / Emplacement</label><input type="text" name="salle" placeholder="ex: Salle 12" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                        `;
+                    case '10':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Date</label><input type="date" name="date" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Matière</label><input type="text" name="matiere" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Titre de la Leçon</label><input type="text" name="titre" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Objectifs Spécifiques</label><textarea name="objSp" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="2"></textarea></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Déroulement de la séance</label><textarea name="deroulement" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="3"></textarea></div>
+                        `;
+                    case '11':
+                        return `
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Titre de l'ouvrage / Document</label><input type="text" name="titre" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Auteur</label><input type="text" name="auteur" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Catégorie</label><input type="text" name="categorie" placeholder="Pédagogie, Manuel..." class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Description</label><textarea name="description" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="2"></textarea></div>
+                        `;
+                    case '12':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Période / Trimestre</label><input type="text" name="periode" placeholder="1er Trimestre" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Rang</label><input type="text" name="rang" placeholder="1er, 2ème..." class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Nom & Prénom Élève</label><input type="text" name="eleve" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Moyenne obtenue</label><input type="text" name="moyenne" placeholder="18/20" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Motif du Mérite / Appréciation</label><textarea name="motif" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="2"></textarea></div>
+                        `;
+                    case '13':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Tranche d'âge</label><input type="text" name="tranche" placeholder="ex: 10-11 ans" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Nombre Garçons</label><input type="number" name="garcons" placeholder="0" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Nombre Filles</label><input type="number" name="filles" placeholder="0" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Total</label><input type="number" name="total" placeholder="0" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Remarques</label><input type="text" name="remarque" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                        `;
+                    case '14':
+                        return `
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Intitulé de l'évaluation</label><input type="text" name="intitule" required placeholder="Composition Trimestre 1" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Matière</label><input type="text" name="matiere" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Date</label><input type="date" name="date" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Barème</label><input type="number" name="bareme" value="20" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Coefficient</label><input type="number" name="coefficient" value="1" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>
+                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Observations globales</label><textarea name="observations" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl" rows="2"></textarea></div>
+                        `;
+                    default:
+                        return `<div><label class="block text-xs font-semibold text-slate-600 mb-1">Intitulé</label><input type="text" name="titre" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></div>`;
+                }
+            }
+
+            openGenericModal(modNumber, title) {
+                const modalId = `generic-modal-mod${modNumber}`;
+                let modal = document.getElementById(modalId);
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = modalId;
+                    modal.className = 'fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4';
+                    document.body.appendChild(modal);
+                }
+
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <h3 class="text-lg font-bold text-slate-900 mb-4">Nouvel enregistrement - ${title}</h3>
+                        <form id="generic-form-mod${modNumber}" class="space-y-4" onsubmit="app.saveGenericItem(event, '${modNumber}')">
+                            ${this.getFormFieldsForModule(modNumber)}
+                            <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                                <button type="button" onclick="app.closeGenericModal('${modNumber}')" class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl">Annuler</button>
+                                <button type="submit" class="px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-600/20">Enregistrer</button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+                modal.classList.remove('hidden');
+            }
+
+            closeGenericModal(modNumber) {
+                const modal = document.getElementById(`generic-modal-mod${modNumber}`);
+                if (modal) modal.classList.add('hidden');
+            }
+
+            saveGenericItem(e, modNumber) {
+                e.preventDefault();
+                const form = document.getElementById(`generic-form-mod${modNumber}`);
+                const formData = new FormData(form);
+                const item = {};
+                for (let [key, val] of formData.entries()) {
+                    item[key] = val;
+                }
+                item.id = Date.now();
+
+                // Sauvegarde dans la clé de stockage appropriée selon le module
+                const modKeyMap = {
+                    '3': 'planning', '4': 'brochureItems', '5': 'reglement',
+                    '6': 'attendance', '7': 'cleaning', '8': 'remarks',
+                    '9': 'timetable', '10': 'preparations', '11': 'library',
+                    '12': 'honor', '13': 'agesStats', '14': 'evaluations'
+                };
+
+                const storageKey = modKeyMap[modNumber] || `module_${modNumber}_data`;
+                if (!this.data[storageKey]) {
+                    this.data[storageKey] = Array.isArray(this.data[storageKey]) ? [] : [];
+                }
+
+                if (Array.isArray(this.data[storageKey])) {
+                    this.data[storageKey].push(item);
+                } else {
+                    this.data[storageKey] = [item];
+                }
+
+                this.saveData();
+                this.closeGenericModal(modNumber);
+                this.showToast('Enregistrement réussi', 'L\'élément a été ajouté avec succès.', 'success');
+            }
+
+            renderGenericPlaceholder(container, modNumber, title, desc) {
+                container.innerHTML = `
+                    <div class="space-y-6">
+                        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900">${modNumber}. ${title}</h2>
+                                <p class="text-xs text-slate-500">${desc}</p>
+                            </div>
+                            <button onclick="app.openGenericModal('${modNumber}', '${title.replace(/'/g, "\\'")}')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors shadow-lg shadow-indigo-600/20"><i class="fa-solid fa-plus mr-2"></i>Nouveau</button>
+                        </div>
+                        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-12 text-center text-slate-400">
+                            <i class="fa-solid fa-folder-open text-4xl mb-3 text-indigo-300"></i>
+                            <h3 class="font-bold text-slate-700 text-lg">Espace de gestion ${title}</h3>
+                            <p class="text-xs mt-1 text-slate-500">Cliquez sur le bouton "Nouveau" pour afficher le formulaire d'édition et saisir vos enregistrements.</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderMod3(container) { this.renderGenericPlaceholder(container, '3', 'Répartition Mensuelle du Programme', 'Planification et suivi de la progression pédagogique'); }
+            renderMod4(container) { this.renderGenericPlaceholder(container, '4', 'Brochure Programme', 'Objectifs généraux et compétences attendues'); }
+            renderMod5(container) { this.renderGenericPlaceholder(container, '5', 'Règlement Intérieur', 'Gestion de la discipline et des articles de la classe'); }
+            renderMod6(container) { this.renderGenericPlaceholder(container, '6', 'Registre d\'Appel', 'Suivi journalier des présences et absences'); }
+            renderMod7(container) { this.renderGenericPlaceholder(container, '7', 'Service de Balayage', 'Planning hebdomadaire de nettoyage de la classe'); }
+            renderMod8(container) { this.renderGenericPlaceholder(container, '8', 'Cahier de Remarques', 'Observations pédagogiques et disciplinaires'); }
+            renderMod9(container) { this.renderGenericPlaceholder(container, '9', 'Emploi du Temps', 'Grille horaire hebdomadaire et gestion des séances'); }
+            renderMod10(container) { this.renderGenericPlaceholder(container, '10', 'Cahier de Préparation', 'Fiches pédagogiques et préparation des leçons'); }
+            renderMod11(container) { this.renderGenericPlaceholder(container, '11', 'Bibliothèque Numérique', 'Ressources et documents pédagogiques'); }
+            renderMod12(container) { this.renderGenericPlaceholder(container, '12', 'Tableau d\'Honneur', 'Distributions et valorisation des progrès des élèves'); }
+            renderMod13(container) { this.renderGenericPlaceholder(container, '13', 'Tableau des Âges', 'Statistiques et répartition démographique des élèves'); }
+            renderMod14(container) { this.renderGenericPlaceholder(container, '14', 'Résultats des Compositions', 'Gestion des notes, moyennes et bulletins'); }
+        }
+
+        // Initialisation de l'application au chargement
+        const app = new FofanaApp();
+        window.onload = () => {
+            app.init();
+        };
+    </script>
+</body>
+</html>
